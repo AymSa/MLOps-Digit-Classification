@@ -1,0 +1,6 @@
+root_data : '/media/reinstate/MyData1/code/datasets/'
+dir_ckpts : '/media/reinstate/MyData1/code/mnist-mlops/ckpts'
+classes : 10
+epochs : 1
+percent_valid_examples : 0.1
+batch_size : 128
