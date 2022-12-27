@@ -1,5 +1,6 @@
 import argparse
 import os
+import datetime
 from typing import List
 from typing import Optional
 import sys
@@ -247,13 +248,13 @@ def perform_tuning(
     return trial.params
 
 
-def set_mlflow():
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
-    mlflow.set_experiment("mlops-mnist-pl")
+def set_mlflow(tracking_uri="sqlite:///mlflow.db", experiment_name="mlops-mnist-pl"):
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(experiment_name)
 
+    return MlflowClient(tracking_uri)
 
 def process_tuned_params(best_params, classes):
-
     n_layers = best_params["n_layers"]
     output_dims = []
 
@@ -267,21 +268,22 @@ def process_tuned_params(best_params, classes):
     return new_best_params
 
 
-def save_model(model, dir_ckpts):
+def register_model(model):
+    mlflow.pytorch.log_model(
+        pytorch_model=model,
+        artifact_path="pytorch-model",
+        registered_model_name="pytorch-mnist-simple-nn",
+    )
 
-    dir_mlflow_ckpts = os.path.join(dir_ckpts, 'mlflow')
-    os.makedirs(dir_mlflow_ckpts, exist_ok=True)
 
-    mlflow.pytorch.save_model(model, dir_mlflow_ckpts)
-
-
-def load_model(ckpt_path):
-    return mlflow.pytorch.load_model(ckpt_path)
+def load_model(model_name, stage):
+    return mlflow.pytorch.load_model(model_uri=f"models:/{model_name}/{stage}")
 
 
 def main():
+
     use_tunning = True
-    
+    lightning_ckpt_path = None  # "ckpts/lightning/lightning_logs/version_0/checkpoints/epoch=0-step=430.ckpt"
     initial_params = {
         "classes": 10,
         "dropout": 0.5,
@@ -291,8 +293,11 @@ def main():
     }
 
     args = get_params()
-    set_mlflow()
-    dir_lightning_ckpt = os.path.join(args.dir_ckpts, 'lightning')
+    client = set_mlflow()
+
+    model_name = "pytorch-mnist-simple-nn"
+    stage = "Staging"
+    dir_lightning_ckpt = os.path.join(args.dir_ckpts, "lightning")
     ###Dataset
 
     datamodule = MNISTDataModule(data_dir=args.root_data, batch_size=args.batch_size)
@@ -313,35 +318,40 @@ def main():
         best_params = process_tuned_params(best_params, args.classes)
 
     model_params = best_params if use_tunning else initial_params
+    with mlflow.start_run():
 
-    mlflow.log_params(model_params)
+        mlflow.log_params(model_params)
 
-    model = LightningNet(**model_params)
+        model = LightningNet(**model_params)
 
-    ###Training and testing###
+        ###Training and testing###
 
-    trainer = pl.Trainer(
-        logger=True,
-        enable_checkpointing=True,
-        max_epochs=args.epochs,
-        accelerator="gpu",
-        devices=1 if torch.cuda.is_available() else None,
-        default_root_dir = dir_lightning_ckpt
-    )
+        trainer = pl.Trainer(
+            logger=True,
+            enable_checkpointing=False,
+            max_epochs=args.epochs,
+            accelerator="gpu",
+            devices=1 if torch.cuda.is_available() else None,
+            default_root_dir=dir_lightning_ckpt,
+        )
 
-    trainer.fit(model, train_dataloaders=datamodule.train_dataloader())
+        trainer.fit(model, train_dataloaders=datamodule.train_dataloader())
 
+        # Sauvegarde du modèle après entrainement complet, ajout transition 
+        register_model(model)
 
-    #Chargement du modèle après entrainement complet
-    save_model(model, args.dir_ckpts)
+        # Chargement du modèle
 
+        model = load_model(model_name, stage)
 
-    test_results = trainer.test(
-        model, dataloaders=datamodule.test_dataloader(), ckpt_path=None
-    )
+        test_results = trainer.test(
+            model,
+            dataloaders=datamodule.test_dataloader(),
+            ckpt_path=lightning_ckpt_path,
+        )
 
-    for test_result in test_results:
-        mlflow.log_metrics(test_result)
+        for test_result in test_results:
+            mlflow.log_metrics(test_result)
 
 
 if __name__ == "__main__":
