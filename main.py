@@ -24,7 +24,8 @@ from optuna.integration import PyTorchLightningPruningCallback
 from multiprocessing import cpu_count
 import yaml
 from yaml.loader import SafeLoader
-import random 
+import random
+
 
 class LightningNet(pl.LightningModule):
     def __init__(
@@ -94,6 +95,7 @@ class LightningNet(pl.LightningModule):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
+@task(retries=3, retry_delay_seconds=60)
 class MNISTDataModule(pl.LightningDataModule):
     def __init__(self, data_dir: str, batch_size: int):
         super().__init__()
@@ -139,6 +141,7 @@ class MNISTDataModule(pl.LightningDataModule):
         )
 
 
+@task
 def objective(
     trial: optuna.trial.Trial,
     ModelClass,
@@ -188,24 +191,12 @@ def get_params():
     parser = argparse.ArgumentParser(
         description="PytorchLightning MNIST Classification."
     )
-    parser.add_argument(
-        "--pruning",
-        "-p",
-        action="store_true",
-        help="Activate the pruning feature. `MedianPruner` stops unpromising "
-        "trials at the early stages of training.",
-    )
+
     parser.add_argument(
         "--model_name",
         "-n",
         default="pytorch-mnist-simple-nn",
         help="Choose model name.",
-    )
-    parser.add_argument(
-        "--stage",
-        "-s",
-        default="Staging",
-        help="Choose model stage.",
     )
     parser.add_argument(
         "--train",
@@ -218,6 +209,20 @@ def get_params():
         action="store_true",
         help="Activate the tunning feature.",
     )
+    parser.add_argument(
+        "--pruning",
+        "-p",
+        action="store_true",
+        help="Activate the pruning feature. `MedianPruner` stops unpromising "
+        "trials at the early stages of training.",
+    )
+
+    parser.add_argument(
+        "--stage",
+        "-s",
+        default="Staging",
+        help="Choose model stage.",
+    )
 
     parser.add_argument(
         "--transition",
@@ -225,14 +230,23 @@ def get_params():
         help="Update the trained model to specified stage.",
     )
 
+    parser.add_argument(
+        "--use_parser",
+        "-u",
+        action="store_true",
+        help="Use the argparser parameters",
+    )
+
     args = parser.parse_args()
 
     with open("./config.yaml") as f:
         dict_yaml = yaml.load(f, Loader=SafeLoader)
 
-    return argparse.Namespace(**vars(args), **dict_yaml)
+    args = argparse.Namespace(**vars(args), **dict_yaml) if args.use_tunning else dict_yaml
+    return args 
 
 
+@flow
 def perform_tuning(
     ClassModel,
     datamodule,
@@ -276,6 +290,7 @@ def perform_tuning(
     return trial.params
 
 
+@task
 def set_mlflow(tracking_uri, experiment_name):
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
@@ -283,6 +298,7 @@ def set_mlflow(tracking_uri, experiment_name):
     return MlflowClient(tracking_uri)
 
 
+@task
 def process_tuned_params(best_params, classes):
     n_layers = best_params["n_layers"]
     output_dims = []
@@ -297,6 +313,7 @@ def process_tuned_params(best_params, classes):
     return new_best_params
 
 
+@task
 def register_model(client, model, model_name, stage, artifact_path, transition):
     mlflow.pytorch.log_model(
         pytorch_model=model,
@@ -310,11 +327,19 @@ def register_model(client, model, model_name, stage, artifact_path, transition):
         )
 
 
+@task(retries=3, retry_delay_seconds=60)
 def load_model(model_name, stage):
     return mlflow.pytorch.load_model(model_uri=f"models:/{model_name}/{stage}")
 
 
+@flow(version=os.getenv("GIT_COMMIT_SHA"))
 def main():
+
+    """
+    Description :
+        Main function for loading MNIST dataset, training and evaluating with registery
+
+    """
     ### Setup ###
 
     initial_params = {
@@ -322,10 +347,10 @@ def main():
         "dropout": random.random(),
         "learning_rate": random.random(),
         "n_layers": 3,
-        "output_dims": [random.randint(20,200) for _ in range(3)],
+        "output_dims": [random.randint(20, 200) for _ in range(3)],
     }
-
     args = get_params()
+
     client = set_mlflow(args.mflow_tracking_uri, args.mlflow_experiment_name)
     dir_lightning_ckpt = os.path.join(args.dir_ckpts, "lightning")
 
@@ -389,9 +414,6 @@ def main():
         for test_result in test_results:
             mlflow.log_metrics(test_result)
 
-        print("Success")
-
 
 if __name__ == "__main__":
-
     main()
