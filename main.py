@@ -17,7 +17,7 @@ from torchvision import transforms
 
 import mlflow
 from mlflow.client import MlflowClient
-from prefect import flow, task
+from prefect import flow, task, get_run_logger
 import optuna
 from optuna.integration import PyTorchLightningPruningCallback
 
@@ -186,8 +186,15 @@ def objective(
 
     return trainer.callback_metrics["val_acc"].item()
 
+@task 
+def get_yaml_params(yaml_path : str) -> dict:
+    with open("./config.yaml") as f:
+        dict_yaml = yaml.load(f, Loader=SafeLoader)
 
-def get_params():
+    return dict_yaml
+
+@task 
+def get_parser_params() -> dict :
     parser = argparse.ArgumentParser(
         description="PytorchLightning MNIST Classification."
     )
@@ -239,11 +246,7 @@ def get_params():
 
     args = parser.parse_args()
 
-    with open("./config.yaml") as f:
-        dict_yaml = yaml.load(f, Loader=SafeLoader)
-
-    args = argparse.Namespace(**vars(args), **dict_yaml) if args.use_tunning else dict_yaml
-    return args 
+    return vars(args)
 
 
 @flow
@@ -331,17 +334,17 @@ def register_model(client, model, model_name, stage, artifact_path, transition):
 def load_model(model_name, stage):
     return mlflow.pytorch.load_model(model_uri=f"models:/{model_name}/{stage}")
 
-
+#TODO : Prefect extension -> Support **kwargs as parameters 
 @flow(version=os.getenv("GIT_COMMIT_SHA"))
-def main():
+def main(config_path : str, prefect_args : dict) -> None:
 
     """
     Description :
         Main function for loading MNIST dataset, training and evaluating with registery
 
     """
-    ### Setup ###
 
+    ### Setup ###
     initial_params = {
         "classes": 10,
         "dropout": random.random(),
@@ -349,8 +352,11 @@ def main():
         "n_layers": 3,
         "output_dims": [random.randint(20, 200) for _ in range(3)],
     }
-    args = get_params()
-
+    parser_args = get_parser_params()
+    yaml_args = get_yaml_params(config_path)
+    
+    args = argparse.Namespace(**parser_args, **yaml_args) if parser_args['use_parser'] else argparse.Namespace(**yaml_args, **prefect_args) 
+    
     client = set_mlflow(args.mflow_tracking_uri, args.mlflow_experiment_name)
     dir_lightning_ckpt = os.path.join(args.dir_ckpts, "lightning")
 
@@ -359,8 +365,8 @@ def main():
     datamodule = MNISTDataModule(data_dir=args.root_data, batch_size=args.batch_size)
 
     ###HyperParameter Search and Model Creation###
-
     if args.tunning:
+    
         best_params = perform_tuning(
             LightningNet,
             datamodule,
@@ -416,4 +422,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(config_path='./config.py', prefect_args = {'model_name' : "pytorch-mnist-simple-nn", 
+                                                    'train' : False, 
+                                                    'tunning' : False, 
+                                                    'pruning' : False, 
+                                                    'transition' : False, 
+                                                    'stage': "Staging", 
+                                                    'use_parser' : False})
