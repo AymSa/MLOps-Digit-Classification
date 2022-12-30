@@ -58,8 +58,8 @@ class LightningNet(pl.LightningModule):
         self.layers: nn.Module = nn.Sequential(*layers)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
-
-        logits = self.layers(data.view(-1, 28 * 28))
+        flatten_data = data.view(-1, 28 * 28)
+        logits = self.layers(flatten_data)
         return F.log_softmax(logits, dim=1)
 
     def training_step(self, batch, batch_idx: int) -> torch.Tensor:

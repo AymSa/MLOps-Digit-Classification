@@ -10,7 +10,28 @@ main.ipynb
 mlflow.db
 optuna.db
 TODO.md
+dev.py
+test.py
+flaskr/templates/process/utils.js
+flaskr/templates/process/template.html
 
+
+###Flask 
+
+venv/
+
+*.pyc
+__pycache__/
+
+instance/
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+dist/
+build/
+*.egg-info/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
