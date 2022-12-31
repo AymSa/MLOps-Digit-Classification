@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+
+{% block header %}
+		<h1>Write digit</h1>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/write.css') }}">
+    {% endblock %}
+
+
+    {% block content %}
+
+		<div class="centered">
+		  <canvas id="canvas" width="128" height="128"></canvas>
+		</div>
+
+		<div class="centered">
+			<input type="button" class="myButton" value="Predict">
+			<input type="button" id="clearButton" value="Clear">
+		</div>
+
+		<div class="centered">
+			<h1 id="result"></h1>
+		</div>
+
+
+  		<script src="{{url_for('static',filename='script/jquery-3.2.0.min.js')}}"></script>
+	    <script src="{{url_for('static',filename='script/write.js')}}"></script>
+	    <script type="text/javascript">
+	   		$(".myButton").click(function(){
+	   			$('#result').text('  Predicting...');
+	   			var canvasObj = document.getElementById("canvas");
+	   			var img = canvasObj.toDataURL('image/png');
+	   			$.ajax({
+	   				type: "POST",
+	   				url: "",
+	   				data: img,
+	   				success: function(data){
+	   					$('#result').text('Predicted Output: ' + data);
+	   				}
+	   			});
+	   		});
+	   </script>
+{% endblock %}

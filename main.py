@@ -95,7 +95,7 @@ class LightningNet(pl.LightningModule):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-@task(retries=3, retry_delay_seconds=60)
+# @task(retries=3, retry_delay_seconds=60)
 class MNISTDataModule(pl.LightningDataModule):
     def __init__(self, data_dir: str, batch_size: int):
         super().__init__()

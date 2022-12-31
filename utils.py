@@ -11,6 +11,11 @@ def process_data(data):
     )(data).to(torch.float32)
 
 
+#Ajout lecture des fichiers de config 
+
+#Ajout d'un fichier d'inference 
+
+
 if __name__ == "__main__":
 
     path_img = "/home/reinstate/Desktop/7.png"
