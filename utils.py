@@ -1,29 +1,85 @@
-from torchvision import transforms
-import torch
-from PIL import Image
-import cv2
+from prefect import task 
+import yaml 
+from yaml import SafeLoader
+import argparse
+import mlflow
+from mlflow.client import MlflowClient
 
-#Probleme le modele a été entrainé sur des torch.float32 mais ne possede pas suffisament d'infos 
-def process_data(data):
+### GET PARAMETERS ###
 
-    return transforms.Compose(
-        [transforms.PILToTensor(), transforms.Grayscale(), transforms.Resize((28, 28))]
-    )(data).to(torch.float32)
+@task 
+def get_yaml_params(yaml_path : str) -> dict:
+    with open(yaml_path) as f:
+        dict_yaml = yaml.load(f, Loader=SafeLoader)
 
-
-#Ajout lecture des fichiers de config 
-
-#Ajout d'un fichier d'inference 
+    return dict_yaml
 
 
-if __name__ == "__main__":
+@task 
+def get_parser_params() -> dict :
+    parser = argparse.ArgumentParser(
+        description="PytorchLightning MNIST Classification."
+    )
 
-    path_img = "/home/reinstate/Desktop/7.png"
+    parser.add_argument(
+        "--model_name",
+        "-n",
+        default="pytorch-mnist-simple-nn",
+        help="Choose model name.",
+    )
+    parser.add_argument(
+        "--train",
+        "-t",
+        action="store_true",
+        help="Train model.",
+    )
+    parser.add_argument(
+        "--tunning",
+        action="store_true",
+        help="Activate the tunning feature.",
+    )
+    parser.add_argument(
+        "--pruning",
+        "-p",
+        action="store_true",
+        help="Activate the pruning feature. `MedianPruner` stops unpromising "
+        "trials at the early stages of training.",
+    )
 
-    pil = Image.open(path_img)
+    parser.add_argument(
+        "--stage",
+        "-s",
+        default="Staging",
+        help="Choose model stage.",
+    )
 
-    data = process_data(pil)
-    print(data.shape)
-    cv2.imshow('img', data.permute(1,2,0).numpy())
-    cv2.waitKey(-1)
-    cv2.destroyAllWindows()
+    parser.add_argument(
+        "--transition",
+        action="store_true",
+        help="Update the trained model to specified stage.",
+    )
+
+    parser.add_argument(
+        "--use_parser",
+        "-u",
+        action="store_true",
+        help="Use the argparser parameters",
+    )
+
+    args = parser.parse_args()
+
+    return vars(args)
+
+
+### SET URI MLFLOW###
+
+@task
+def set_mlflow(tracking_uri, experiment_name):
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(experiment_name)
+
+    return MlflowClient(tracking_uri)
+
+
+
+
