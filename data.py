@@ -1,6 +1,4 @@
 from torchvision import transforms
-import torch
-from prefect import task 
 from typing import Optional
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
@@ -8,13 +6,7 @@ from torchvision import datasets
 from multiprocessing import cpu_count
 import pytorch_lightning as pl
 
-def process_data(data):
-    return transforms.Compose(
-        [transforms.PILToTensor(), transforms.Grayscale(), transforms.Resize((28, 28))]
-    )(data).to(torch.float32)
 
-
-@task(retries=3, retry_delay_seconds=60)
 class MNISTDataModule(pl.LightningDataModule):
     def __init__(self, data_dir: str, batch_size: int):
         super().__init__()

@@ -1,5 +1,5 @@
-from prefect import task 
-import yaml 
+from prefect import task
+import yaml
 from yaml import SafeLoader
 import argparse
 import mlflow
@@ -7,16 +7,17 @@ from mlflow.client import MlflowClient
 
 ### GET PARAMETERS ###
 
-@task 
-def get_yaml_params(yaml_path : str) -> dict:
+
+@task
+def get_yaml_params(yaml_path: str) -> dict:
     with open(yaml_path) as f:
         dict_yaml = yaml.load(f, Loader=SafeLoader)
 
     return dict_yaml
 
 
-@task 
-def get_parser_params() -> dict :
+@task
+def get_parser_params() -> dict:
     parser = argparse.ArgumentParser(
         description="PytorchLightning MNIST Classification."
     )
@@ -73,13 +74,10 @@ def get_parser_params() -> dict :
 
 ### SET URI MLFLOW###
 
+
 @task
 def set_mlflow(tracking_uri, experiment_name):
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
     return MlflowClient(tracking_uri)
-
-
-
-

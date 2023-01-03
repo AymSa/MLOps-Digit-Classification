@@ -7,7 +7,7 @@ mlflow_artifact_path : "pytorch-model"
 
 classes : 10
 epochs : 1
-percent_valid_examples : 0.1
+percent_valid_examples : 1.0
 batch_size : 128
 tune_trials : 100
-tune_timeout : 20
+tune_timeout : 1
