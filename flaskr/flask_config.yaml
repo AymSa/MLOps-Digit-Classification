@@ -1,0 +1,4 @@
+mflow_tracking_uri : "sqlite:///instance/mlflow.sqlite"
+mlflow_experiment_name : "mlops-mnist-pl"
+stage : "None"
+model_name : "ConvNet"

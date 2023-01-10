@@ -38,7 +38,7 @@ def parseImage(imgData):
 def predict():
     if request.method == "POST":
         seed_everything(42)
-        dict_yaml = get_yaml_params("instance/flask_config.yaml")
+        dict_yaml = get_yaml_params("flaskr/flask_config.yaml")
         set_mlflow(dict_yaml["mflow_tracking_uri"], dict_yaml["mlflow_experiment_name"])
 
         parseImage(request.get_data())
