@@ -4,10 +4,9 @@ sys.path.append(".")
 sys.path.append("..")
 
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
-from werkzeug.exceptions import abort
 
-from auth import login_required
-from db import get_db
+from flaskr.auth import login_required
+from flaskr.db import get_db
 import torch
 import cv2
 from PIL import Image

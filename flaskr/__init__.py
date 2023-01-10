@@ -1,9 +1,8 @@
 import os
-
 from flask import Flask, render_template
-import db, auth, process
-from prefect import flow
-
+from flaskr import db, auth, process
+from prefect import flow, task
+from prefect.task_runners import SequentialTaskRunner
 
 @flow
 def create_app(test_config=None):
@@ -34,8 +33,10 @@ def create_app(test_config=None):
 
     return app
 
+app = create_app()
 
-if __name__ == "__main__":
-
-    app = create_app()
-    app.run(debug=True, host="0.0.0.0", port=9696)
+if __name__ == '__main__':
+    debug=True
+    host='0.0.0.0'
+    port=9696
+    app.run(debug=debug, host=host, port=port)

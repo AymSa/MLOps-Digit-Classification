@@ -7,7 +7,7 @@ description: |-
       Main function for loading MNIST dataset, training and evaluating with registery
 version: cf08f69ae015c59e64bb465c55f9c1f6
 # The work queue that will handle this deployment's runs
-work_queue_name: test
+work_queue_name: train
 tags: []
 parameters: {'config_path' : './config.py', 
              'prefect_args' : { 'model_name' : 'pytorch-mnist-simple-nn', 
