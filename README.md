@@ -24,14 +24,6 @@ The pipeline starts with data preparation, where the dataset is loaded and proce
 
 Finally, the entire pipeline is containerized using Docker, making it easy to deploy and run on different environments. The pipeline is also managed using Prefect, allowing for complete control over the workflow and easy monitoring of the progress. With the use of these tools, we can achieve an automated and scalable solution for digits classification, providing accurate results in real-time with a simple user interface.
 
-<div align="center">
-<h3 align="center">Classification Example</h3>
-  <a href="https://github.com/AymSa/MLOps-Digit-Classification">
-    <img src="images/example.png" width="640" height="480">
-  </a>
-
-</div>
-
 ### Built With
 
 * [![Python][Python]][Python-url]
